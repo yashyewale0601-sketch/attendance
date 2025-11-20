@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Student Attendance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:Arial;background:#f4f4f4;padding:20px}
+.box{background:#fff;padding:20px;border-radius:10px;width:400px;margin:auto}
+input,button{padding:10px;width:100%;margin:6px 0}
+button{background:#28a745;color:#fff;border:none;font-weight:bold;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>Attendance Form</h2>
+
+<p id="eventInfo"></p>
+
+<input id="roll" placeholder="Roll Number">
+<input id="name" placeholder="Name">
+<input id="division" placeholder="Division">
+
+<label>Supabase URL</label>
+<input id="url">
+
+<label>Supabase Key</label>
+<input id="key">
+
+<button onclick="submitForm()">Submit</button>
+<p id="msg"></p>
+</div>
+
+<script>
+let eventID = new URLSearchParams(location.search).get("event_id");
+
+document.getElementById("eventInfo").innerText = "Event ID: " + eventID;
+
+async function submitForm(){
+
+    let supabase = supabasejs.createClient(
+        document.getElementById("url").value,
+        document.getElementById("key").value
+    );
+
+    let roll = document.getElementById("roll").value;
+    let name = document.getElementById("name").value;
+    let division = document.getElementById("division").value;
+
+    let { error } = await supabase.from("attendance").insert([{
+        event_id: eventID,
+        roll_no: roll,
+        name: name,
+        division: division
+    }]);
+
+    if(error){
+        document.getElementById("msg").innerText = "Error: " + error.message;
+        return;
+    }
+
+    document.getElementById("msg").innerText = "Attendance Submitted!";
+}
+</script>
+
+</body>
+</html>
