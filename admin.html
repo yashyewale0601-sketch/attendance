@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Attendance Admin — Create Event, QR & Export</title>
+
+  <!-- QR library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:24px;background:#f6f7fb}
+    .card{max-width:900px;margin:0 auto;background:#fff;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(10,15,30,0.06)}
+    h1{margin:0 0 12px}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    input,select,button{padding:10px;border-radius:8px;border:1px solid #e6edf3}
+    input,select{flex:1;min-width:220px}
+    button{background:#0f172a;color:white;border:none;cursor:pointer}
+    #qrcode{margin-top:12px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
+    .small{font-size:13px;color:#6b7280}
+    img.policy-snap{max-width:300px;margin-top:12px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Admin — Attendance</h1>
+    <p class="small">Create an event and generate a QR which links to the separate student form (student.html). Export attendance to Excel.</p>
+
+    <!-- SUPABASE CREDENTIALS (pre-filled) -->
+    <div style="margin-top:12px" class="row">
+      <input id="supabaseUrl" value="https://qdfwzuttffkpitplisop.supabase.co" placeholder="Supabase URL (project)"/>
+      <input id="supabaseKey" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI" placeholder="Supabase ANON key"/>
+    </div>
+
+    <!-- Create event -->
+    <div style="margin-top:14px">
+      <label><strong>Event title</strong></label>
+      <div class="row" style="margin-top:6px">
+        <input id="eventTitle" placeholder="e.g. Python Workshop — 2025-11-30">
+        <input id="eventDate" type="date" style="max-width:200px"/>
+        <button id="createEventBtn" style="min-width:160px">Create Event</button>
+      </div>
+    </div>
+
+    <!-- QR + link -->
+    <div id="qrArea" style="margin-top:16px;display:none">
+      <h3 style="margin:0 0 8px">QR & Link</h3>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div id="qrcode"></div>
+        <div>
+          <div class="small">Student URL (scan/open):</div>
+          <div id="studentLink" style="word-break:break-all"></div>
+          <div style="margin-top:8px"><button id="copyLinkBtn">Copy Link</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Events list -->
+    <div style="margin-top:18px">
+      <h3 style="margin:0 0 8px">Events</h3>
+      <table id="eventsTable">
+        <thead><tr><th>Title</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Export -->
+    <div style="margin-top:12px">
+      <button id="exportExcelBtn">Download Attendance Excel</button>
+    </div>
+
+    <details style="margin-top:12px">
+      <summary>RLS policy screenshot (admin reference)</summary>
+      <img class="policy-snap" src="/mnt/data/f7e4cc5d-ff90-49eb-9ac8-f2e763e9e9d6.png" alt="policy-screenshot"/>
+    </details>
+  </div>
+
+<script>
+  // Helper to create supabase client from inputs
+  function getSupabaseClient() {
+    const url = document.getElementById('supabaseUrl').value.trim();
+    const key = document.getElementById('supabaseKey').value.trim();
+    if (!url || !key) { alert('Enter Supabase URL and ANON key'); return null; }
+    return supabase.createClient(url, key);
+  }
+
+  // Create event in DB
+  document.getElementById('createEventBtn').addEventListener('click', async () => {
+    const supa = getSupabaseClient();
+    if(!supa) return;
+    const title = document.getElementById('eventTitle').value.trim();
+    const date = document.getElementById('eventDate').value || null;
+    if(!title) return alert('Enter event title');
+    const { data, error } = await supa.from('events').insert([{ title, event_date: date }]).select().single();
+    if(error) { console.error(error); return alert('Error creating event: '+error.message); }
+    loadEvents(); 
+    showQRForEvent(data);
+  });
+
+  // Show QR for an event record
+  function showQRForEvent(ev) {
+    const studentPage = (location.origin + location.pathname).replace(/\/[^/]*$/,'/') + 'student.html';
+    // use query routing ?event=<id> to reliably open student form
+    const url = studentPage + '?event=' + encodeURIComponent(ev.id);
+    document.getElementById('qrArea').style.display = 'block';
+    document.getElementById('qrcode').innerHTML = '';
+    new QRCode(document.getElementById('qrcode'), { text: url, width:160, height:160 });
+    document.getElementById('studentLink').innerText = url;
+  }
+
+  // Copy link button
+  document.getElementById('copyLinkBtn').addEventListener('click', () => {
+    const txt = document.getElementById('studentLink').innerText;
+    if(!txt) return;
+    navigator.clipboard?.writeText(txt).then(()=>alert('Copied link'));
+  });
+
+  // Load events into table
+  async function loadEvents(){
+    const supa = getSupabaseClient();
+    if(!supa) return;
+    const { data, error } = await supa.from('events').select('*').order('created_at',{ascending:false});
+    if(error){ console.error(error); return alert('Error loading events: '+error.message); }
+    const tbody = document.querySelector('#eventsTable tbody');
+    tbody.innerHTML = '';
+    data.forEach(ev => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${ev.title}</td><td>${ev.event_date || ''}</td>
+        <td>
+          <button class="btn-open" data-id="${ev.id}">Show QR</button>
+          <button class="btn-copy" data-id="${ev.id}">Copy Link</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    // attach handlers
+    tbody.querySelectorAll('.btn-open').forEach(b => b.addEventListener('click', async e => {
+      const id = b.dataset.id;
+      const ev = data.find(x=>x.id===id);
+      showQRForEvent(ev);
+    }));
+    tbody.querySelectorAll('.btn-copy').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.id;
+      const studentPage = (location.origin + location.pathname).replace(/\/[^/]*$/,'/') + 'student.html';
+      const url = studentPage + '?event=' + encodeURIComponent(id);
+      navigator.clipboard?.writeText(url).then(()=>alert('Copied link'));
+    }));
+  }
+
+  // Export attendance to Excel (includes event title by joining client-side)
+  document.getElementById('exportExcelBtn').addEventListener('click', async () => {
+    const supa = getSupabaseClient();
+    if(!supa) return;
+    const [{ data:attendance, error:ea }, { data:events, error:ee }] = await Promise.all([
+      supa.from('attendance').select('*').order('created_at',{ascending:false}),
+      supa.from('events').select('*')
+    ]);
+    if(ea||ee){ console.error(ea||ee); return alert('Fetch error'); }
+    const rows = attendance.map(a => {
+      const ev = events.find(x=>x.id===a.event_id) || {};
+      return {
+        event_title: ev.title || '',
+        event_id: a.event_id,
+        name: a.name,
+        division: a.division,
+        roll_no: a.roll_no,
+        email: a.email,
+        created_at: a.created_at
+      };
+    });
+    if(rows.length === 0) return alert('No attendance records.');
+    // create worksheet & workbook
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+    XLSX.writeFile(wb, 'attendance.xlsx');
+  });
+
+  // load events on start (if credentials present)
+  window.addEventListener('load', () => {
+    // small delay to allow user to paste custom keys if needed
+    setTimeout(() => { try{ loadEvents(); } catch(e){} }, 300);
+  });
+</script>
+</body>
+</html>
