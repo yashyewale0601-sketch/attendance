@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Student Attendance Form</title>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <style>
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#f4f6fb;padding:24px}
+    .card{max-width:520px;margin:20px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(10,15,30,0.06)}
+    input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #e6edf3}
+    button{background:#0f172a;color:#fff;border:none;cursor:pointer}
+    .small{font-size:13px;color:#6b7280}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Student Attendance</h2>
+    <p class="small" id="eventInfo">Loading event…</p>
+
+    <label>Name</label>
+    <input id="name" placeholder="Full name">
+
+    <label>Division</label>
+    <input id="division" placeholder="Division / Class">
+
+    <label>Roll No</label>
+    <input id="roll_no" placeholder="Roll number">
+
+    <label>Email</label>
+    <input id="email" placeholder="student@example.com" type="email">
+
+    <button id="submitBtn">Submit Attendance</button>
+
+    <p id="msg" style="color:green;margin-top:10px"></p>
+  </div>
+
+<script>
+  const SUPABASE_URL = "https://qdfwzuttffkpitplisop.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";
+  const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  const EVENT_ID = params.get('event');
+
+  async function showEventInfo() {
+    if(!EVENT_ID) {
+      document.getElementById('eventInfo').innerText = 'No event specified in URL.';
+      return;
+    }
+    try {
+      const { data, error } = await supabase.from('events').select('title,event_date').eq('id', EVENT_ID).single();
+      if(!error && data) {
+        document.getElementById('eventInfo').innerText = `Event: ${data.title}${data.event_date ? ' — '+data.event_date : ''}`;
+      } else {
+        document.getElementById('eventInfo').innerText = `Event ID: ${EVENT_ID}`;
+      }
+    } catch(e) {
+      document.getElementById('eventInfo').innerText = `Event ID: ${EVENT_ID}`;
+    }
+  }
+
+  showEventInfo();
+
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const name = document.getElementById('name').value.trim();
+    const division = document.getElementById('division').value.trim();
+    const roll_no = document.getElementById('roll_no').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if(!EVENT_ID) return alert('Event not provided. Scan the QR for the correct event.');
+    if(!name || !division || !roll_no || !email) return alert('Fill all fields.');
+
+    const { error } = await supabase.from('attendance').insert([{
+      event_id: EVENT_ID,
+      name, division, roll_no, email
+    }]);
+
+    if(error) {
+      alert('Error: ' + error.message);
+      console.log(error); // Added Step 5 debugging line
+    } else {
+      document.getElementById('msg').innerText = 'Attendance recorded — thank you!';
+      document.getElementById('submitBtn').disabled = true;
+    }
+  });
+</script>
+</body>
+</html>
