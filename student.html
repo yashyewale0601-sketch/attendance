@@ -38,54 +38,70 @@
   </div>
 
 <script>
+  // Your Supabase Credentials
   const SUPABASE_URL = "https://qdfwzuttffkpitplisop.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";
-  const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";   // Replace with your anon key
 
+  // ❗ CORRECT CLIENT CALL (was wrong in your file)
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Get event ID from URL
   const params = new URLSearchParams(window.location.search);
   const EVENT_ID = params.get('event');
 
+  // Load Event Info
   async function showEventInfo() {
     if(!EVENT_ID) {
       document.getElementById('eventInfo').innerText = 'No event specified in URL.';
       return;
     }
-    try {
-      const { data, error } = await supabase.from('events').select('title,event_date').eq('id', EVENT_ID).single();
-      if(!error && data) {
-        document.getElementById('eventInfo').innerText = `Event: ${data.title}${data.event_date ? ' — '+data.event_date : ''}`;
-      } else {
-        document.getElementById('eventInfo').innerText = `Event ID: ${EVENT_ID}`;
-      }
-    } catch(e) {
+
+    const { data, error } = await supabaseClient
+      .from('events')
+      .select('title,event_date')
+      .eq('id', EVENT_ID)
+      .single();
+
+    if(error) {
+      console.log("Event load error:", error);
       document.getElementById('eventInfo').innerText = `Event ID: ${EVENT_ID}`;
+    }
+    else {
+      document.getElementById('eventInfo').innerText = 
+        `Event: ${data.title} — ${data.event_date}`;
     }
   }
 
   showEventInfo();
 
+  // Submit Attendance
   document.getElementById('submitBtn').addEventListener('click', async () => {
+
     const name = document.getElementById('name').value.trim();
     const division = document.getElementById('division').value.trim();
     const roll_no = document.getElementById('roll_no').value.trim();
     const email = document.getElementById('email').value.trim();
 
-    if(!EVENT_ID) return alert('Event not provided. Scan the QR for the correct event.');
+    if(!EVENT_ID) return alert('Event missing in URL.');
     if(!name || !division || !roll_no || !email) return alert('Fill all fields.');
 
-    const { error } = await supabase.from('attendance').insert([{
+    const { error } = await supabaseClient.from('attendance').insert([{
       event_id: EVENT_ID,
-      name, division, roll_no, email
+      name,
+      division,
+      roll_no,
+      email
     }]);
 
     if(error) {
-      alert('Error: ' + error.message);
-      console.log(error); // Added Step 5 debugging line
+      alert("Error: " + error.message);
+      console.log("Insert error:", error);
     } else {
-      document.getElementById('msg').innerText = 'Attendance recorded — thank you!';
+      document.getElementById('msg').innerText = "Attendance Recorded ✔";
       document.getElementById('submitBtn').disabled = true;
     }
   });
 </script>
+
 </body>
 </html>
