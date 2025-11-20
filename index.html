@@ -6,156 +6,117 @@
   <!-- QR Code Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Supabase -->
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Excel Export Library -->
+  <!-- Excel Export Library (SheetJS) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <style>
-    body {
-      font-family: Arial;
-      margin: 40px;
-    }
-    #qr {
-      margin-top: 20px;
-    }
-    .box {
-      padding: 20px;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      width: 350px;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 8px;
-      margin-top: 10px;
-    }
-    button {
-      background: black;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+    body { font-family: Arial; margin: 40px; }
+    #qr { margin-top: 20px; }
+    .box { padding: 20px; border: 1px solid #ccc; border-radius: 10px; width: 350px; }
+    input, select, button { width: 100%; padding: 8px; margin-top: 10px; }
+    button { background: black; color: white; border: none; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 
 <body>
 
-<!-- =======================
-     ADMIN PAGE
-======================= -->
-<div id="adminPage" class="box">
-  <h2>Generate QR for Event</h2>
+  <!-- ADMIN PAGE -->
+  <div id="adminPage" class="box">
+    <h2>Generate QR for Event</h2>
 
-  <label>Select Event:</label>
-  <select id="eventSelect">
-    <option value="python_workshop">Python Workshop</option>
-    <option value="cloud_computing">Cloud Computing Seminar</option>
-    <option value="ai_session">AI Intro Session</option>
-  </select>
+    <label>Select Event:</label>
+    <select id="eventSelect">
+      <option value="python_workshop">Python Workshop</option>
+      <option value="cloud_computing">Cloud Computing Seminar</option>
+      <option value="ai_session">AI Intro Session</option>
+    </select>
 
-  <button onclick="generateQR()">Generate QR Code</button>
+    <button onclick="generateQR()">Generate QR Code</button>
 
-  <div id="qr"></div>
-  <p id="qrLink"></p>
+    <div id="qr"></div>
+    <p id="qrLink"></p>
 
-  <hr>
+    <hr>
 
-  <button onclick="downloadExcel()">Download Attendance Excel</button>
-</div>
+    <button onclick="downloadExcel()">Download Attendance Excel</button>
+  </div>
 
+  <!-- STUDENT FORM PAGE -->
+  <div id="formPage" class="box" style="display:none;">
+    <h2>Student Attendance Form</h2>
 
+    <label>Roll No:</label>
+    <input type="text" id="roll">
 
-<!-- =======================
-     STUDENT PAGE
-======================= -->
-<div id="formPage" class="box" style="display:none;">
-  <h2>Student Attendance Form</h2>
+    <label>Name:</label>
+    <input type="text" id="name">
 
-  <label>Roll No:</label>
-  <input type="text" id="roll">
+    <label>Division:</label>
+    <input type="text" id="div">
 
-  <label>Name:</label>
-  <input type="text" id="name">
+    <button onclick="submitForm()">Submit Attendance</button>
 
-  <label>Division:</label>
-  <input type="text" id="div">
-
-  <button onclick="submitForm()">Submit Attendance</button>
-
-  <p id="status" style="color:green;"></p>
-</div>
+    <p id="status" style="color:green;"></p>
+  </div>
 
 
 <script>
-/* ------------------------------
-   SUPABASE CONFIG
---------------------------------*/
+// --- Supabase config with your credentials ---
 const SUPABASE_URL = "https://qdfwzuttffkpitplisop.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-
-/* ------------------------------
-   1. GENERATE QR CODE
---------------------------------*/
+// 1. Generate QR code for selected event
 function generateQR() {
   const eventId = document.getElementById("eventSelect").value;
 
-  // URL students will open after scanning
-  let scanURL = window.location.origin + window.location.pathname + "#form?event=" + eventId;
+  // Build link for student
+  let scanURL = window.location.origin + window.location.pathname +
+    "?form=1&event=" + encodeURIComponent(eventId);
 
   document.getElementById("qr").innerHTML = "";
   new QRCode(document.getElementById("qr"), scanURL);
 
-  document.getElementById("qrLink").innerHTML =
-    "<b>Scan URL:</b> " + scanURL;
+  document.getElementById("qrLink").innerHTML = "<b>Scan URL:</b> " + scanURL;
 }
 
-
-/* ------------------------------
-   2. OPEN FORM IF QR SCANNED
---------------------------------*/
-if (window.location.hash.startsWith("#form")) {
+// 2. On page load, check if student form should show
+const params = new URLSearchParams(window.location.search);
+if (params.get("form") === "1") {
   document.getElementById("adminPage").style.display = "none";
   document.getElementById("formPage").style.display = "block";
-
-  const eventId = new URLSearchParams(window.location.hash.split("?")[1])
-                    .get("event");
-
-  window.currentEvent = eventId;
+  window.currentEvent = params.get("event");
 }
 
-
-/* ------------------------------
-   3. SUBMIT FORM (INSERT)
---------------------------------*/
+// 3. Submit attendance
 async function submitForm() {
-  let roll = document.getElementById("roll").value;
-  let name = document.getElementById("name").value;
-  let div = document.getElementById("div").value;
+  const roll = document.getElementById("roll").value;
+  const name = document.getElementById("name").value;
+  const division = document.getElementById("div").value;
 
-  let { error } = await supabase
+  if (!roll || !name || !division) {
+    alert("Please fill all fields.");
+    return;
+  }
+
+  const { error } = await supabase
     .from("attendance")
-    .insert([{ roll, name, div, event: window.currentEvent }]);
+    .insert([{ event: window.currentEvent, roll_no: roll, name: name, division: division }]);
 
   if (error) {
-    alert("ERROR: " + error.message);
+    alert("Error: " + error.message);
   } else {
-    document.getElementById("status").innerText =
-      "Attendance Recorded Successfully!";
+    document.getElementById("status").innerText = "Attendance Submitted!";
   }
 }
 
-
-/* ------------------------------
-   4. DOWNLOAD EXCEL (ADMIN)
---------------------------------*/
+// 4. Download Excel of attendance
 async function downloadExcel() {
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from("attendance")
     .select("*");
 
@@ -163,18 +124,14 @@ async function downloadExcel() {
     alert("Error fetching data: " + error.message);
     return;
   }
-
   if (!data || data.length === 0) {
-    alert("No attendance records found.");
+    alert("No attendance to export.");
     return;
   }
 
-  // Convert JSON → Excel sheet
-  let worksheet = XLSX.utils.json_to_sheet(data);
-  let workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
-
-  // Download file
   XLSX.writeFile(workbook, "attendance.xlsx");
 }
 </script>
