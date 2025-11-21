@@ -1,106 +1,132 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <title>Student Attendance Form</title>
+<meta charset="utf-8"/>
+<title>Attendance Form</title>
 
-  <!-- Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <style>
-    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:#f4f6fb;padding:24px}
-    .card{max-width:520px;margin:20px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(10,15,30,0.06)}
-    input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #e6edf3}
-    button{background:#0f172a;color:#fff;border:none;cursor:pointer}
-    .small{font-size:13px;color:#6b7280}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Student Attendance</h2>
-    <p class="small" id="eventInfo">Loading event…</p>
-
-    <label>Name</label>
-    <input id="name" placeholder="Full name">
-
-    <label>Division</label>
-    <input id="division" placeholder="Division / Class">
-
-    <label>Roll No</label>
-    <input id="roll_no" placeholder="Roll number">
-
-    <label>Email</label>
-    <input id="email" placeholder="student@example.com" type="email">
-
-    <button id="submitBtn">Submit Attendance</button>
-
-    <p id="msg" style="color:green;margin-top:10px"></p>
-  </div>
-
-<script>
-  // Your Supabase Credentials
-  const SUPABASE_URL = "https://qdfwzuttffkpitplisop.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";   // Replace with your anon key
-
-  // ❗ CORRECT CLIENT CALL (was wrong in your file)
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  // Get event ID from URL
-  const params = new URLSearchParams(window.location.search);
-  const EVENT_ID = params.get('event');
-
-  // Load Event Info
-  async function showEventInfo() {
-    if(!EVENT_ID) {
-      document.getElementById('eventInfo').innerText = 'No event specified in URL.';
-      return;
-    }
-
-    const { data, error } = await supabaseClient
-      .from('events')
-      .select('title,event_date')
-      .eq('id', EVENT_ID)
-      .single();
-
-    if(error) {
-      console.log("Event load error:", error);
-      document.getElementById('eventInfo').innerText = `Event ID: ${EVENT_ID}`;
-    }
-    else {
-      document.getElementById('eventInfo').innerText = 
-        `Event: ${data.title} — ${data.event_date}`;
-    }
+<style>
+  body{
+    font-family:"Poppins",sans-serif;
+    background:#eef1f7;
+    padding:25px;
   }
 
-  showEventInfo();
+  .card{
+    max-width:430px;
+    margin:30px auto;
+    background:white;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.09);
+    animation:fadeIn 0.4s ease;
+  }
 
-  // Submit Attendance
-  document.getElementById('submitBtn').addEventListener('click', async () => {
+  @keyframes fadeIn {
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
 
-    const name = document.getElementById('name').value.trim();
-    const division = document.getElementById('division').value.trim();
-    const roll_no = document.getElementById('roll_no').value.trim();
-    const email = document.getElementById('email').value.trim();
+  input,button{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    font-size:15px;
+    transition:0.2s;
+  }
 
-    if(!EVENT_ID) return alert('Event missing in URL.');
-    if(!name || !division || !roll_no || !email) return alert('Fill all fields.');
+  input:focus{
+    border-color:#6366f1;
+    box-shadow:0 0 5px rgba(99,102,241,0.3);
+  }
 
-    const { error } = await supabaseClient.from('attendance').insert([{
-      event_id: EVENT_ID,
-      name,
-      division,
-      roll_no,
-      email
-    }]);
+  button{
+    background:#1e40af;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+  }
 
-    if(error) {
-      alert("Error: " + error.message);
-      console.log("Insert error:", error);
-    } else {
-      document.getElementById('msg').innerText = "Attendance Recorded ✔";
-      document.getElementById('submitBtn').disabled = true;
-    }
-  });
+  button:hover{
+    background:#1d3bb8;
+  }
+
+  #msg{
+    margin-top:10px;
+    color:#10b981;
+    font-weight:600;
+  }
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Student Attendance</h2>
+  <p id="eventInfo" style="color:#4b5563;">Loading event...</p>
+
+  <label>Name</label>
+  <input id="name" placeholder="Full Name">
+
+  <label>Division</label>
+  <input id="division" placeholder="A / B / C">
+
+  <label>Roll No</label>
+  <input id="roll" placeholder="Roll Number">
+
+  <label>Email</label>
+  <input id="email" type="email" placeholder="abc@example.com">
+
+  <button id="submitBtn">Submit</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+const SUPABASE_URL="https://qdfwzuttffkpitplisop.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkZnd6dXR0ZmZrcGl0cGxpc29wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MzQ3NzMsImV4cCI6MjA3ODUxMDc3M30.ruo0v0XVE5RvUn_nvL0VlZwg3eh2VJnN2K_-0eCBWOI";
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const EVENT_ID=new URLSearchParams(location.search).get("event");
+
+async function loadEvent(){
+  if(!EVENT_ID){
+    eventInfo.innerText="Invalid Event!";
+    return;
+  }
+  const {data,error}=await supabaseClient.from("events").select("*").eq("id",EVENT_ID).single();
+  if(data){
+    eventInfo.innerText=`Event: ${data.title} (${data.event_date})`;
+  }
+}
+loadEvent();
+
+document.getElementById("submitBtn").onclick=async()=>{
+  const name=document.getElementById("name").value.trim();
+  const division=document.getElementById("division").value.trim();
+  const roll=document.getElementById("roll").value.trim();
+  const email=document.getElementById("email").value.trim();
+
+  if(!name || !division || !roll || !email)
+    return alert("Fill all fields!");
+
+  const {error}=await supabaseClient.from("attendance").insert([{
+    event_id:EVENT_ID,
+    name,division,roll_no:roll,email
+  }]);
+
+  if(error){
+    alert("Error: "+error.message);
+  }else{
+    msg.innerText="Attendance Submitted ✔";
+    submitBtn.disabled=true;
+    submitBtn.style.opacity="0.7";
+  }
+};
 </script>
 
 </body>
